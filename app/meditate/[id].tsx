@@ -7,15 +7,85 @@ import { router, useLocalSearchParams } from "expo-router";
 import AppGradient from "@/components/AppGradient";
 import { AntDesign } from "@expo/vector-icons";
 import CustomButton from "@/components/CustomButton";
+import {Audio} from "expo-av"
+import { isLoaded } from "expo-font";
 
 const Page = () => {
   const { id } = useLocalSearchParams();
 
-  const [secondsRemaining,setSecondsRemaining] = useState(10);
+  const [secondsRemaining, setSecondsRemaining] = useState(10);
+  const [isMeditating, setMeditating] = useState(false);
+  const [audioSound, setSound]= useState<Audio.Sound>();
+  const [isPlayingAudio, setPlayingAudio] = useState(false);
 
-  useEffect(()=>{
-        let timerId:NodeJs.Timeout
-  },[])
+  useEffect(() => {
+    let timerId: NodeJS.Timeout;
+
+    //exit
+    if (secondsRemaining === 0) {
+      setMeditating(false);
+      return;
+    }
+
+    if (isMeditating) {
+      timerId = setTimeout(() => {
+        setSecondsRemaining(secondsRemaining - 1);
+      }, 1000);
+    }
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [secondsRemaining,isMeditating]);
+
+
+  useEffect(() => {
+     return (() => {
+      audioSound?.unloadAsync();
+     })
+  },[audioSound])
+
+  const toggleMeditationSessionStatus = async () => {
+    if(secondsRemaining === 0) setSecondsRemaining(10);
+
+    setMeditating(!isMeditating);
+    await togglePlayPause();
+  }
+
+  const togglePlayPause=async () => {
+    const sound = audioSound?audioSound:await initializeSound()
+    const status = await sound?.getStatusAsync();
+
+    if(status?.isLoaded && !isPlayingAudio){
+      await sound?.playAsync();
+      setPlayingAudio(true);
+    } else {
+      await sound?.pauseAsync();
+      setPlayingAudio(false);
+    }
+
+  }
+
+  const initializeSound = async () => {
+    const audioFileName = MEDITATION_DATA[Number(id) - 1].audio;
+
+    const { sound } = await Audio.Sound.createAsync(
+        AUDIO_FILES[audioFileName]
+    );
+    setSound(sound);
+    return sound;
+};
+
+
+const handleAdjustDuration= ()=>{
+   if(isMeditating) toggleMeditationSessionStatus();
+   router.push("/(modal)/adjust-meditation-duration")
+}
+
+  //format the lime left to ensure two digits are display
+  const formattedTimeMinutes=String(Math.floor(secondsRemaining/60)).padStart(2,"0")
+
+  const formattedTimeSeconds = String(Math.floor(secondsRemaining % 60)).padStart(2,"0")
 
   return (
     <View className="flex-1">
@@ -32,12 +102,22 @@ const Page = () => {
             <AntDesign name="leftcircleo" size={50} color="white" />
           </Pressable>
           <View className="flex-1 justify-center">
-           <View className="mx-auto bg-neutral-200 rounded-full w-44 h-44 justify-center items-center">
-            <Text className="text-4xl text-blue-800">00:{secondsRemaining}</Text>
-           </View>
+            <View className="mx-auto bg-neutral-200 rounded-full w-44 h-44 justify-center items-center">
+              <Text className="text-4xl text-blue-800 font-rmono">
+                {formattedTimeMinutes}:{formattedTimeSeconds}
+              </Text>
+            </View>
           </View>
           <View className="mb-5">
-           <CustomButton title="Start Meditation" onPress={()=>console.log("meditate")} />
+            <CustomButton
+              title="Start duration"
+              onPress={ handleAdjustDuration}
+            />
+            <CustomButton
+              title="Start Meditation"
+              onPress={ toggleMeditationSessionStatus}
+              containerStyles="mt-4"
+            />
           </View>
         </AppGradient>
       </ImageBackground>
