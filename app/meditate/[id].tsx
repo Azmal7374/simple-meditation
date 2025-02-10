@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { ImageBackground, Pressable, Text, View } from "react-native";
 import MEDITATION_IMAGES from "@/constants/meditation-images";
 import { TimerContext } from "@/context/TimerContext";
@@ -13,7 +13,8 @@ import { isLoaded } from "expo-font";
 const Page = () => {
   const { id } = useLocalSearchParams();
 
-  const [secondsRemaining, setSecondsRemaining] = useState(10);
+  const {duration:secondsRemaining, setDuration } = useContext(TimerContext)
+  // const [secondsRemaining, setSecondsRemaining] = useState(10);
   const [isMeditating, setMeditating] = useState(false);
   const [audioSound, setSound]= useState<Audio.Sound>();
   const [isPlayingAudio, setPlayingAudio] = useState(false);
@@ -29,7 +30,7 @@ const Page = () => {
 
     if (isMeditating) {
       timerId = setTimeout(() => {
-        setSecondsRemaining(secondsRemaining - 1);
+        setDuration(secondsRemaining - 1);
       }, 1000);
     }
 
@@ -41,12 +42,13 @@ const Page = () => {
 
   useEffect(() => {
      return (() => {
+      setDuration(10)
       audioSound?.unloadAsync();
      })
   },[audioSound])
 
   const toggleMeditationSessionStatus = async () => {
-    if(secondsRemaining === 0) setSecondsRemaining(10);
+    if(secondsRemaining === 0) setDuration(10);
 
     setMeditating(!isMeditating);
     await togglePlayPause();
@@ -114,7 +116,7 @@ const handleAdjustDuration= ()=>{
               onPress={ handleAdjustDuration}
             />
             <CustomButton
-              title="Start Meditation"
+              title={isMeditating? "Stop": "Start Meditation"}
               onPress={ toggleMeditationSessionStatus}
               containerStyles="mt-4"
             />
